@@ -339,82 +339,82 @@ extension ChatViewController {
             })
         }
         
-        if messageActions.contains(.reply), presenter.canReply {
-            actions.append(UIAction(title: "Reply", image: UIImage(systemName: "arrowshape.turn.up.left")) { [weak self] _ in
-                self?.showReplies(parentMessage: message)
-            })
-        }
+//        if messageActions.contains(.reply), presenter.canReply {
+//            actions.append(UIAction(title: "Reply", image: UIImage(systemName: "arrowshape.turn.up.left")) { [weak self] _ in
+//                self?.showReplies(parentMessage: message)
+//            })
+//        }
         
         if messageActions.contains(.edit), message.canEdit {
-            actions.append(UIAction(title: "Edit", image: UIImage(systemName: "pencil")) { [weak self] _ in
+            actions.append(UIAction(title: "編集", image: UIImage(systemName: "pencil")) { [weak self] _ in
                 self?.edit(message: message)
             })
         }
         
         if messageActions.contains(.copy), let copyAction = copyAction(for: message) {
-            actions.append(UIAction(title: "Copy", image: UIImage(systemName: "doc.on.doc")) { _ in copyAction() })
+            actions.append(UIAction(title: "コピー", image: UIImage(systemName: "doc.on.doc")) { _ in copyAction() })
         }
         
-        if !message.user.isCurrent {
-            // Mute.
-            if messageActions.contains(.muteUser), presenter.channel.config.mutesEnabled {
-                if message.user.isMuted {
-                    actions.append(UIAction(title: "Unmute", image: UIImage(systemName: "speaker")) { [weak self] _ in
-                        self?.unmute(user: message.user)
-                    })
-                } else {
-                    actions.append(UIAction(title: "Mute", image: UIImage(systemName: "speaker.slash")) { [weak self] _ in
-                        self?.mute(user: message.user)
-                    })
-                }
-            }
+//        if !message.user.isCurrent {
+//            // Mute.
+//            if messageActions.contains(.muteUser), presenter.channel.config.mutesEnabled {
+//                if message.user.isMuted {
+//                    actions.append(UIAction(title: "Unmute", image: UIImage(systemName: "speaker")) { [weak self] _ in
+//                        self?.unmute(user: message.user)
+//                    })
+//                } else {
+//                    actions.append(UIAction(title: "Mute", image: UIImage(systemName: "speaker.slash")) { [weak self] _ in
+//                        self?.mute(user: message.user)
+//                    })
+//                }
+//            }
+//
+//            if presenter.channel.config.flagsEnabled {
+//                // Flag a message.
+//                if messageActions.contains(.flagMessage) {
+//                    if message.isFlagged {
+//                        actions.append(UIAction(title: "Unflag the message",
+//                                                image: UIImage(systemName: "flag.slash")) { [weak self] _ in
+//                                                    self?.unflag(message: message)
+//                        })
+//                    } else {
+//                        actions.append(UIAction(title: "Flag the message",
+//                                                image: UIImage(systemName: "flag"),
+//                                                attributes: [.destructive]) { [weak self] _ in
+//                                                    self?.flag(message: message)
+//                        })
+//                    }
+//                }
+//
+//                // Flag a user.
+//                if messageActions.contains(.flagUser) {
+//                    if message.user.isFlagged {
+//                        actions.append(UIAction(title: "Unflag the user",
+//                                                image: UIImage(systemName: "hand.raised.slash")) { [weak self] _ in
+//                                                    self?.unflag(user: message.user)
+//                        })
+//                    } else {
+//                        actions.append(UIAction(title: "Flag the user",
+//                                                image: UIImage(systemName: "hand.raised"),
+//                                                attributes: [.destructive]) { [weak self] _ in
+//                                                    self?.flag(user: message.user)
+//                        })
+//                    }
+//                }
+//            }
             
-            if presenter.channel.config.flagsEnabled {
-                // Flag a message.
-                if messageActions.contains(.flagMessage) {
-                    if message.isFlagged {
-                        actions.append(UIAction(title: "Unflag the message",
-                                                image: UIImage(systemName: "flag.slash")) { [weak self] _ in
-                                                    self?.unflag(message: message)
-                        })
-                    } else {
-                        actions.append(UIAction(title: "Flag the message",
-                                                image: UIImage(systemName: "flag"),
-                                                attributes: [.destructive]) { [weak self] _ in
-                                                    self?.flag(message: message)
-                        })
-                    }
-                }
-                
-                // Flag a user.
-                if messageActions.contains(.flagUser) {
-                    if message.user.isFlagged {
-                        actions.append(UIAction(title: "Unflag the user",
-                                                image: UIImage(systemName: "hand.raised.slash")) { [weak self] _ in
-                                                    self?.unflag(user: message.user)
-                        })
-                    } else {
-                        actions.append(UIAction(title: "Flag the user",
-                                                image: UIImage(systemName: "hand.raised"),
-                                                attributes: [.destructive]) { [weak self] _ in
-                                                    self?.flag(user: message.user)
-                        })
-                    }
-                }
-            }
-            
-            if messageActions.contains(.banUser),
-                presenter.channel.banEnabling.isEnabled(for: presenter.channel),
-                !presenter.channel.isBanned(message.user) {
-                actions.append(UIAction(title: "Ban",
-                                        image: UIImage(systemName: "exclamationmark.octagon"),
-                                        attributes: [.destructive]) { [weak self] _ in
-                                            if let channel = self?.presenter?.channel {
-                                                self?.ban(user: message.user, channel: channel)
-                                            }
-                })
-            }
-        }
+//            if messageActions.contains(.banUser),
+//                presenter.channel.banEnabling.isEnabled(for: presenter.channel),
+//                !presenter.channel.isBanned(message.user) {
+//                actions.append(UIAction(title: "Ban",
+//                                        image: UIImage(systemName: "exclamationmark.octagon"),
+//                                        attributes: [.destructive]) { [weak self] _ in
+//                                            if let channel = self?.presenter?.channel {
+//                                                self?.ban(user: message.user, channel: channel)
+//                                            }
+//                })
+//            }
+//        }
         
 //        if messageActions.contains(.delete), message.canDelete {
 //            actions.append(UIAction(title: "Delete",
