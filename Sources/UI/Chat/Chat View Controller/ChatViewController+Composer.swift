@@ -220,7 +220,7 @@ extension ChatViewController {
 
 extension ChatViewController {
     func createComposerEditingContainerView() -> ComposerHelperContainerView {
-        let container = createComposerHelperContainerView(title: "Edit message")
+        let container = createComposerHelperContainerView(title: "メッセージを編集")
         
         container.closeButton.rx.tap
             .subscribe(onNext: { [weak self] _ in
