@@ -12,9 +12,9 @@ import StreamChatClient
 /// A chat item type for view elements.
 public enum PresenterItem: Equatable {
     /// A title for the yesterday separator.
-    public static var statusYesterdayTitle = "Yesterday"
+    public static var statusYesterdayTitle = "昨日"
     /// A title for the today separator.
-    public static var statusTodayTitle = "Today"
+    public static var statusTodayTitle = "今日"
     
     /// A loading item.
     case loading(_ inProgress: Bool)

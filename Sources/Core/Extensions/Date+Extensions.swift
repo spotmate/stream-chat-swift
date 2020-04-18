@@ -23,7 +23,7 @@ extension Date {
 
 extension Date {
     /// A yesterday title for a status separartor.
-    public static var yesterday = "Yesterday"
+    public static var yesterday = "昨日"
     /// A words separator for day and time.
     public static var wordsSeparator = ", "
     
