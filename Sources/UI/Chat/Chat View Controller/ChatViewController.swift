@@ -300,7 +300,7 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
 
 extension ChatViewController {
     
-    private func updateTitle() {
+    func updateTitle() {
         guard title == nil, navigationItem.rightBarButtonItem == nil, let presenter = presenter else {
             return
         }
@@ -318,7 +318,7 @@ extension ChatViewController {
         channelAvatar.update(with: imageURL, name: title, baseColor: style.incomingMessage.chatBackgroundColor)
     }
     
-    private func updateTitleReplyCount() {
+    func updateTitleReplyCount() {
         guard title == "Thread", let parentMessage = presenter?.parentMessage else {
             return
         }
