@@ -294,12 +294,12 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
             presenter?.rx.markReadIfPossible().subscribe().disposed(by: disposeBag)
         }
     }
-}
+//}
+//
+//// MARK: - Title
+//
+//extension ChatViewController {
 
-// MARK: - Title
-
-extension ChatViewController {
-    
     open func updateTitle() {
         guard title == nil, navigationItem.rightBarButtonItem == nil, let presenter = presenter else {
             return
