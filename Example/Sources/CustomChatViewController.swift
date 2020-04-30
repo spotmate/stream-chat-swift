@@ -43,6 +43,16 @@ class CustomChatViewController: ChatViewController {
         }
         
         title = presenter.channel.name
+
+        presenter.messagePreparationCallback = {
+            var message = $0
+            
+            if message.text.lowercased() == "unicorn" {
+                message.text = "*neighs* 🦄"
+            }
+            
+            return message
+        }
         
         presenter.rx.channelDidUpdate
             .drive(onNext: { [weak self] channel in
@@ -54,6 +64,16 @@ class CustomChatViewController: ChatViewController {
         membersCountButton.rx.tap
             .subscribe(onNext: { [weak self] in self?.showMembers() })
             .disposed(by: disposeBag)
+    }
+    
+    override func createThreadChatViewController(with channelPresenter: ChannelPresenter) -> ChatViewController {
+        let controller = super.createThreadChatViewController(with: channelPresenter)
+        
+        if let message = channelPresenter.parentMessage {
+            controller.style.composer.placeholderText = "Reply to \(message.user.name)"
+        }
+        
+        return controller
     }
     
     func touchMembersCount() {

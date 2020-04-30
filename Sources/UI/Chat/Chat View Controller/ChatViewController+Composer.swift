@@ -116,7 +116,7 @@ extension ChatViewController {
                 .disposed(by: disposeBag)
         }
         
-        let textViewEvents = composerView.textView.rx.text.skip(1).unwrap().share()
+        let textViewEvents = composerView.textView.rx.text.skip(1).compactMap({ $0 }).share()
         
         // Dispatch commands from text view.
         textViewEvents.subscribe(onNext: { [weak self] in self?.dispatchCommands(in: $0) }).disposed(by: disposeBag)
@@ -404,17 +404,17 @@ extension ChatViewController {
     private func showAddFileView() {
         guard let composerAddFileContainerView = composerAddFileContainerView,
             !composerAddFileContainerView.containerView.arrangedSubviews.isEmpty else {
-            return
+                return
         }
         
         showCommands(show: false)
         
         composerAddFileContainerView.containerView.arrangedSubviews.forEach { subview in
-            if let addFileView = subview as? ComposerAddFileView {
+            if let addFileView = subview as? ComposerAddFileView, let uploadManager = composerView.uploadManager {
                 if case .file = addFileView.sourceType {
-                    addFileView.isHidden = !composerView.imageUploaderItems.isEmpty
+                    addFileView.isHidden = !uploadManager.images.isEmpty
                 } else {
-                    addFileView.isHidden = !composerView.isUploaderFilesEmpty
+                    addFileView.isHidden = !uploadManager.files.isEmpty
                 }
             }
         }
@@ -456,36 +456,43 @@ extension ChatViewController {
             return
         }
         
-        showImagePicker(sourceType: pickerSourceType) { [weak self] pickedImage, status in
+        showImagePicker(sourceType: pickerSourceType) { [weak self] result in
             guard let self = self else {
                 return
             }
             
-            guard status == .authorized else {
-                self.showImagePickerAuthorizationStatusAlert(status)
-                return
+            do {
+                let pickedImage = try result.get()
+                
+                guard let fileURL = pickedImage.fileURL else {
+                    ClientLogger.log("📁", "File URL cannot be determined for file named: \(pickedImage.fileName)")
+                    return
+                }
+                
+                let fileSizeResource = try fileURL.resourceValues(forKeys: [.fileSizeKey])
+                
+                if let fileSize = fileSizeResource.fileSize,
+                   fileSize >= 20 * 1_048_576 { // 20 MB Upload limit
+                    self.show(errorMessage: "File size exceeds limit of 20MB")
+                    return
+                }
+                
+                guard let presenter = self.presenter, let image = pickedImage.image else {
+                    return
+                }
+                
+                let extraData = presenter.imageAttachmentExtraDataCallback?(fileURL,
+                                                                            image,
+                                                                            pickedImage.isVideo,
+                                                                            presenter.channel)
+                
+                let uploaderItem = UploadingItem(channel: presenter.channel, pickedImage: pickedImage, extraData: extraData)
+                self.composerView.addImageUploaderItem(uploaderItem)
+            } catch let error as ImagePickerError {
+                self.showImagePickerAlert(for: error)
+            } catch {
+                ClientLogger.log("📁", "Error occurred when trying to get file size: \(error)")
             }
-            
-            if let resources = try? pickedImage?.fileURL?.resourceValues(forKeys: [.fileSizeKey]),
-               let fileSize = resources.fileSize,
-               fileSize >= 20 * 1_048_576 { // 20 MB Upload limit
-                self.show(errorMessage: "File size exceeds limit of 20MB")
-                return
-            }
-            
-            guard let presenter = self.presenter,
-                let pickedImage = pickedImage,
-                (pickedImage.fileURL != nil || pickedImage.image != nil) else {
-                return
-            }
-            
-            let extraData = presenter.imageAttachmentExtraDataCallback?(pickedImage.fileURL,
-                                                                        pickedImage.image,
-                                                                        pickedImage.isVideo,
-                                                                        presenter.channel)
-            
-            let uploaderItem = UploaderItem(channel: presenter.channel, pickedImage: pickedImage, extraData: extraData)
-            self.composerView.addImageUploaderItem(uploaderItem)
         }
         
         hideAddFileView()
@@ -501,7 +508,7 @@ extension ChatViewController {
                 if let self = self, let presenter = self.presenter {
                     $0.forEach { url in
                         let extraData = presenter.fileAttachmentExtraDataCallback?(url, presenter.channel)
-                        let uploaderItem = UploaderItem(channel: presenter.channel, url: url, extraData: extraData)
+                        let uploaderItem = UploadingItem(channel: presenter.channel, url: url, extraData: extraData)
                         self.composerView.addFileUploaderItem(uploaderItem)
                     }
                 }

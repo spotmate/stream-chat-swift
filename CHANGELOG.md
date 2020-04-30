@@ -8,11 +8,119 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔄 Changed
 
+# [2.1.0](https://github.com/GetStream/stream-chat-swift/releases/tag/2.1.0)
+_April 29, 2020_
+
+### ⚠️ Breaking Changes
+- Set user will return a `Result<UserConnection, ClientError>` in callback. `UserConnection` has the current user data, connection id and unread count for channels and messages [#182](https://github.com/GetStream/stream-chat-swift/issues/182).
+- `AvatarView.init` changed and it requires `AvatarViewStyle` intead of `cornerRadius` and `font` [#203](https://github.com/GetStream/stream-chat-swift/issues/203).
+- Renamed [#100](https://github.com/GetStream/stream-chat-swift/issues/100):
+  - `ChannelPresenter.uploader` to `ChannelPresenter.uploadManager`,
+  - `UploadItem` to `UploadingItem`.
+- Modified signatures [#100](https://github.com/GetStream/stream-chat-swift/issues/100):
+```swift
+func sendImage(data: Data, 
+               fileName: String, 
+               mimeType: String, 
+               channel: Channel,
+               progress: @escaping Client.Progress, 
+               completion: @escaping Client.Completion<URL>) -> Cancellable
+
+func sendFile(data: Data,
+              fileName: String,
+              mimeType: String,
+              channel: Channel,
+              progress: @escaping Client.Progress,
+              completion: @escaping Client.Completion<URL>) -> Cancellable
+              
+func deleteImage(url: URL, channel: Channel, _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> Cancellable
+
+func deleteFile(url: URL, channel: Channel, _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> Cancellable
+```
+
+### 🔄 Changed
+- `Pagination` doesn't support `+` operator anymore, please use a set of  `PaginationOption`s from now on [#158](https://github.com/GetStream/stream-chat-swift/issues/158).
+- `channel.subscribeToWatcherCount` uses channel events to publish updated counts and does not call `channel.watch` as a side-effect anymore [#161](https://github.com/GetStream/stream-chat-swift/issues/161).
+- Subscriptions for a channel unread count and watcher count [#172](https://github.com/GetStream/stream-chat-swift/issues/172).
+- Changed a returning type for requests as `Cancellable` instead of `URLSessionTask` to make requests and events more consistent [#172](https://github.com/GetStream/stream-chat-swift/issues/172).
+- The example project was updated [#172](https://github.com/GetStream/stream-chat-swift/issues/172).
+- Rename `showImagePickerAuthorizationStatusAlert` to `showImagePickerAlert` [#215](https://github.com/GetStream/stream-chat-swift/pull/215)
 
 ### ✅ Added
-
+- Message preparation callback on `ChannelPresenter` to modify messages before they're sent [#142](https://github.com/GetStream/stream-chat-swift/issues/142).
+- The view controller for threads can now be customized by overriding `createThreadViewController` in `ChatViewController`. This is useful if you need a different style for threads. [#136](https://github.com/GetStream/stream-chat-swift/issues/136).
+- Better errors when developers forget to call `set(user:)` or don't wait for its completion [#160](https://github.com/GetStream/stream-chat-swift/issues/160).
+- Examples for a channel unread count and watcher count in the Example app [#172](https://github.com/GetStream/stream-chat-swift/issues/172).
+- Added `ChatViewStyle.default` [#191](https://github.com/GetStream/stream-chat-swift/issues/191). 
+- Added `ChatViewStyle.dynamic` for iOS 13 to support dynamic colors for dark mode [#191](https://github.com/GetStream/stream-chat-swift/issues/191). 
+- Added `MessageViewStyle.pointedCornerRadius` to make pointed corner rounded [#191](https://github.com/GetStream/stream-chat-swift/issues/191). 
+- Added methods for `AvatarView` customization [#203](https://github.com/GetStream/stream-chat-swift/issues/203):
+- Added `messageInsetSpacing` to `MessageViewStyle` to allow control of spacing between message and container [#216](https://github.com/GetStream/stream-chat-swift/pull/216).
+- Added `Uploader` protocol. Use them to create own uploader for your file storage. Assign your uploader into `ChannelPresenter` [#100](https://github.com/GetStream/stream-chat-swift/issues/100):
+```swift
+presenter.uploadManager = UploadManager(uploader: customUploader)
+```
+`ChannelsViewController`:
+```swift
+open func updateChannelCellAvatarView(in cell: ChannelTableViewCell, channel: Channel)
+```
+`ChatViewController`:
+```swift
+open func updateMessageCellAvatarView(in cell: MessageTableViewCell, message: Message, messageStyle: MessageViewStyle)
+open func updateFooterTypingUserAvatarView(footerView: ChatFooterView, user: User)
+```
+- New properties for `AvatarViewStyle` [#203](https://github.com/GetStream/stream-chat-swift/issues/203): 
+  - `placeholderTextColor: UIColor?` 
+  - `placeholderBackgroundColor: UIColor?`
+- Added `Uploader` protocol. Use them to create own uploader for your file storage. Assign your uploader into `ChannelPresenter` [#100](https://github.com/GetStream/stream-chat-swift/issues/100):
+```swift
+  presenter.uploadManager = UploadManager(uploader: customUploader)
+```
 
 ### 🐞 Fixed
+- SPM support [#156](https://github.com/GetStream/stream-chat-swift/issues/156).
+- Made `SubscriptionBag.init` public [#172](https://github.com/GetStream/stream-chat-swift/issues/172).
+- Unused `RxBlocking` dependency removed [#177](https://github.com/GetStream/stream-chat-swift/pull/177).
+- Reconnection now automatically re-watches all channels watched up to that point [#178](https://github.com/GetStream/stream-chat-swift/pull/178).
+- Unnecessary `Gzip` dependency removed [#183](https://github.com/GetStream/stream-chat-swift/pull/183).
+- Unnecessary `Reachability` dependency removed [#184](https://github.com/GetStream/stream-chat-swift/pull/184).
+- Flag message/user [#186](https://github.com/GetStream/stream-chat-swift/pull/186).
+- Discard messages from muted users [#186](https://github.com/GetStream/stream-chat-swift/pull/186).
+- Fix composerView hiding behind keyboard after launching from bg [#188](https://github.com/GetStream/stream-chat-swift/pull/188).
+- Open `prepareForReuse()` in `ChannelTableViewCell` and `MessageTableViewCell` [#190](https://github.com/GetStream/stream-chat-swift/pull/190).
+- Channel query options default to `.state`, in-line with documentation instead of empty [#198](https://github.com/GetStream/stream-chat-swift/pull/198)
+- Fix the deprecation warning in the `UI` framework [#201](https://github.com/GetStream/stream-chat-swift/pull/201).
+- Fix current user's messages are counted towards unread count [#206](https://github.com/GetStream/stream-chat-swift/pull/206)
+- Fix ImagePicker not asking for permission for avaible source types [#215](https://github.com/GetStream/stream-chat-swift/pull/215)
+- Fix ImagePicker showing an error when no image is selected [#215](https://github.com/GetStream/stream-chat-swift/pull/215)
+
+
+# [2.0.1](https://github.com/GetStream/stream-chat-swift/releases/tag/2.0.1)
+_April 3, 2020_
+
+### 🐞 Fixed
+- Connection issue [#155](https://github.com/GetStream/stream-chat-swift/issues/155).
+- Channel image parsing [#155](https://github.com/GetStream/stream-chat-swift/issues/155).
+- Optionally stop watching channels when view controllers was deallocated [#155](https://github.com/GetStream/stream-chat-swift/issues/155).
+
+# [2.0.0](https://github.com/GetStream/stream-chat-swift/releases/tag/2.0.0)
+_April 2, 2020_
+
+### StreamChat 2.0 here and it's brand new :sparkles: :rocket:
+
+We've added/removed/fixed/changed a lot of stuff, so it's fair to say that StreamChat 2.0 is everything you've liked about 1.x and nothing you didn't like about it :smile:
+
+Most importantly:
+- We have a brand new framework: `StreamChatClient`, that you can use to easily integrate StreamChat into your app without any Presenter or UI logic we have in `StreamChatCore` and `StreamChat` libraries.
+  - `StreamChatClient` has minimal dependencies and it's very low level.
+  - No Reactive dependencies! Everything is handled in good old callbacks.
+  - No reactive makes you sad? StreamChatCore still has all the reactive functionality you'd expect, so you can keep using RxSwift if you want!
+- We've updated our dependencies, and removed some.
+
+Aside from those, we fixed tons of bugs and polished our API. Now it should be more Swifty :tada:
+
+We're working hard on migration guide for our 1.x users and will publish it shortly.
+You can check out updated docs [here](http://getstream.io/chat/docs/)
 
 # [1.6.2](https://github.com/GetStream/stream-chat-swift/releases/tag/1.6.2)
 _April 2, 2020_

@@ -32,8 +32,7 @@ open class MessageTableViewCell: UITableViewCell, Reusable {
     public private(set) var needsToSetup = true
     
     /// An avatar.
-    public private(set) lazy var avatarView = AvatarView(cornerRadius: style.avatarViewStyle?.radius ?? 0,
-                                                         font: style.avatarViewStyle?.placeholderFont)
+    public private(set) lazy var avatarView = AvatarView(style: style.avatarViewStyle)
     
     let reactionsContainer: UIImageView = UIImageView(frame: .zero)
     let reactionsOverlayView = UIView(frame: .zero)
@@ -137,7 +136,7 @@ open class MessageTableViewCell: UITableViewCell, Reusable {
     }()
     
     var messageTextEnrichment: MessageTextEnrichment?
-    var attachmentPreviews: [AttachmentPreviewProtocol] = []
+    var attachmentPreviews: [AttachmentPreview] = []
     
     private(set) lazy var bottomPaddingView: UIView = {
         let view = UIView(frame: .zero)
@@ -155,7 +154,21 @@ open class MessageTableViewCell: UITableViewCell, Reusable {
         didSet { bottomPaddingView.isHidden = paddingType == .small }
     }
     
-    override public func prepareForReuse() {
+    var isContinueMessage = false
+    
+    override open func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        if let messageBackgroundImage = messageBackgroundImage() {
+            messageContainerView.image = messageBackgroundImage
+        }
+        
+        attachmentPreviews.forEach { attachmentPreview in
+            if let filePreview = attachmentPreview as? FileAttachmentPreview {
+                filePreview.apply(imageMask: backgroundImageForAttachment(at: filePreview.index))
+            }
+        }
+    }
+    
+    override open func prepareForReuse() {
         reset()
         super.prepareForReuse()
     }
@@ -217,6 +230,7 @@ open class MessageTableViewCell: UITableViewCell, Reusable {
         // MARK: Avatar
         
         if style.avatarViewStyle != nil {
+            avatarView.backgroundColor = style.chatBackgroundColor
             contentView.addSubview(avatarView)
             
             avatarView.snp.makeConstraints { make in
@@ -241,10 +255,10 @@ open class MessageTableViewCell: UITableViewCell, Reusable {
         messageContainerView.addSubview(messageLabel)
         
         messageLabel.snp.makeConstraints { make in
-            make.left.equalTo(CGFloat.messageHorizontalInset)
-            make.right.equalTo(-CGFloat.messageHorizontalInset)
-            make.top.equalTo(CGFloat.messageVerticalInset).priority(999)
-            make.bottom.equalTo(-CGFloat.messageVerticalInset).priority(999)
+            make.left.equalTo(style.messageInsetSpacing.horizontal)
+            make.right.equalTo(-style.messageInsetSpacing.horizontal)
+            make.top.equalTo(style.messageInsetSpacing.vertical).priority(999)
+            make.bottom.equalTo(-style.messageInsetSpacing.vertical).priority(999)
         }
         
         contentView.addSubview(messageStackView)

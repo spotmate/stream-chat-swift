@@ -11,6 +11,8 @@ import UIKit
 
 extension Client {
     
+    // MARK: URL Session Setup
+    
     func setupURLSession(token: Token = "") -> URLSession {
         let headers = authHeaders(token: token)
         logger?.log(headers: headers)
@@ -41,34 +43,7 @@ extension Client {
         return headers
     }
     
-    func checkLatestVersion() {
-        // Check latest pod version and log warning if there's a new version
-        guard let podUrl = URL(string: "https://trunk.cocoapods.org/api/v1/pods/StreamChat") else { return }
-        
-        // swiftlint:disable nesting
-        struct PodTrunk: Codable {
-            struct Version: Codable {
-                let name: String
-            }
-            
-            let versions: [Version]
-        }
-        // swiftlint:enable nesting
-        
-        let versionTask = URLSession(configuration: .default).dataTask(with: podUrl) { data, _, error in
-            guard let data = data, error == nil else {
-                return
-            }
-            do {
-                let podTrunk = try JSONDecoder().decode(PodTrunk.self, from: data)
-                if let latestVersion = podTrunk.versions.last?.name, latestVersion > Environment.version {
-                    ClientLogger.logger("📢", "", "StreamChat \(latestVersion) is released (you are on \(Environment.version)). "
-                        + "It's recommended to update to the latest version.")
-                }
-            } catch {}
-        }
-        versionTask.resume()
-    }
+    // MARK: - Request
     
     /// Send a request.
     ///
@@ -77,7 +52,29 @@ extension Client {
     ///   - completion: a completion block.
     /// - Returns: an URLSessionTask that can be canncelled.
     @discardableResult
-    func request<T: Decodable>(endpoint: Endpoint, _ completion: @escaping Completion<T>) -> URLSessionTask {
+    func request<T: Decodable>(endpoint: Endpoint, _ completion: @escaping Completion<T>) -> Cancellable {
+        let task = prepareRequest(endpoint: endpoint, completion)
+        task.resume()
+        return Subscription { _  in task.cancel() }
+    }
+    
+    /// Send a progress request.
+    ///
+    /// - Parameters:
+    ///   - endpoint: an endpoint (see `Endpoint`).
+    ///   - completion: a completion block.
+    /// - Returns: an URLSessionTask that can be canncelled.
+    @discardableResult
+    func request<T: Decodable>(endpoint: Endpoint,
+                               progress: @escaping Progress,
+                               completion: @escaping Completion<T>) -> Cancellable {
+        let task = prepareRequest(endpoint: endpoint, completion)
+        urlSessionTaskDelegate.addProgessHandler(id: task.taskIdentifier, progress)
+        task.resume()
+        return Subscription { _  in task.cancel() }
+    }
+    
+    private func prepareRequest<T: Decodable>(endpoint: Endpoint, _ completion: @escaping Completion<T>) -> URLSessionTask {
         if let logger = logger {
             logger.log("Request: \(String(describing: endpoint).prefix(100))...", level: .debug)
         }
@@ -97,8 +94,10 @@ extension Client {
                 : encodeRequest(for: endpoint, url: url).get()
             
             task = urlSession.dataTask(with: urlRequest) { [unowned self] in
+                // Parse the response.
                 self.parse(data: $0, response: $1, error: $2, completion: completion)
                 
+                // Check expired Token on the request.
                 if self.isExpiredTokenInProgress {
                     self.logger?.log("Reconnect and retry a request when the token was expired...", level: .debug)
                     self.addWaitingRequest(endpoint: endpoint, completion)
@@ -106,32 +105,15 @@ extension Client {
             }
             
             logger?.log(task.currentRequest ?? urlRequest, isUploading: endpoint.isUploading)
-            task.resume()
-            
             return task
             
         } catch let error as ClientError {
             performInCallbackQueue { completion(.failure(error)) }
         } catch {
-            completion(.failure(.unexpectedError(description: error.localizedDescription, error: error)))
+            performInCallbackQueue { completion(.failure(.unexpectedError(description: error.localizedDescription, error: error))) }
         }
         
         return .empty
-    }
-    
-    /// Send a progress request.
-    ///
-    /// - Parameters:
-    ///   - endpoint: an endpoint (see `Endpoint`).
-    ///   - completion: a completion block.
-    /// - Returns: an URLSessionTask that can be canncelled.
-    @discardableResult
-    func request<T: Decodable>(endpoint: Endpoint,
-                               _ progress: @escaping Progress,
-                               _ completion: @escaping Completion<T>) -> URLSessionTask {
-        let task = request(endpoint: endpoint, completion)
-        urlSessionTaskDelegate.addProgessHandler(id: task.taskIdentifier, progress)
-        return task
     }
     
     private func requestURL(for endpoint: Endpoint, queryItems: [URLQueryItem]) -> Result<URL, ClientError> {
@@ -155,8 +137,10 @@ extension Client {
         
         var queryItems = [URLQueryItem(name: "api_key", value: apiKey)]
         
-        if let connectionId = webSocket.lastConnectionId {
-            queryItems.append(URLQueryItem(name: "client_id", value: connectionId))
+        if let connectionId = webSocket.connectionId {
+            queryItems.append(URLQueryItem(name: "connection_id", value: connectionId))
+        } else if endpoint.requiresConnectionId {
+            return .failure(.emptyConnectionId)
         }
         
         if let endpointQueryItems = endpoint.jsonQueryItems {
@@ -218,9 +202,11 @@ extension Client {
         return .success(urlRequest)
     }
     
+    // MARK: - Waiting Requests
+    
     private func addWaitingRequest<T: Decodable>(endpoint: Endpoint, _ completion: @escaping Completion<T>) {
         performInCallbackQueue { [unowned self] in
-            let item = WaitingRequest { self.request(endpoint: endpoint, completion) }
+            let item = WaitingRequest { [unowned self] in self.request(endpoint: endpoint, completion) }
             self.waitingRequests.append(item)
         }
     }
@@ -232,23 +218,20 @@ extension Client {
         performInCallbackQueue { [unowned self] in
             if !self.isExpiredTokenInProgress {
                 self.waitingRequests = []
-                self.onConnect(.connected)
             }
         }
     }
-}
-
-// MARK: - Upload files
-
-extension Client {
+    
+    // MARK: - Upload Files
+    
     private func encodeRequestForUpload(for endpoint: Endpoint, url: URL) -> Result<URLRequest, ClientError> {
         let multipartFormData: MultipartFormData
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = endpoint.method.rawValue
         
         switch endpoint {
-        case .sendImage(let fileName, let mimeType, let data, _),
-             .sendFile(let fileName, let mimeType, let data, _):
+        case let .sendImage(data, fileName, mimeType, _),
+             let .sendFile(data, fileName, mimeType, _):
             multipartFormData = MultipartFormData(data, fileName: fileName, mimeType: mimeType)
         default:
             let errorDescription = "Encoding unexpected endpoint \(endpoint) for a file uploading."
@@ -262,11 +245,8 @@ extension Client {
         
         return .success(urlRequest)
     }
-}
-
-// MARK: - Parsing response
-
-extension Client {
+    
+    // MARK: - Parsing
     
     private func parse<T: Decodable>(data: Data?, response: URLResponse?, error: Error?, completion: @escaping Completion<T>) {
         if let error = error {
@@ -333,6 +313,37 @@ extension Client {
         } else {
             block()
         }
+    }
+    
+    // MARK: - Check SDK version
+    
+    func checkLatestVersion() {
+        // Check latest pod version and log warning if there's a new version
+        guard let podUrl = URL(string: "https://trunk.cocoapods.org/api/v1/pods/StreamChat") else { return }
+        
+        // swiftlint:disable nesting
+        struct PodTrunk: Codable {
+            struct Version: Codable {
+                let name: String
+            }
+            
+            let versions: [Version]
+        }
+        // swiftlint:enable nesting
+        
+        let versionTask = URLSession(configuration: .default).dataTask(with: podUrl) { data, _, error in
+            guard let data = data, error == nil else {
+                return
+            }
+            do {
+                let podTrunk = try JSONDecoder().decode(PodTrunk.self, from: data)
+                if let latestVersion = podTrunk.versions.last?.name, latestVersion > Environment.version {
+                    ClientLogger.logger("📢", "", "StreamChat \(latestVersion) is released (you are on \(Environment.version)). "
+                        + "It's recommended to update to the latest version.")
+                }
+            } catch {}
+        }
+        versionTask.resume()
     }
 }
 

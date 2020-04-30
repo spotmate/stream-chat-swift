@@ -54,9 +54,9 @@ public enum Endpoint {
     /// Send a message to a channel.
     case sendMessage(Message, Channel)
     /// Upload an image to a channel.
-    case sendImage(_ fileName: String, _ mimeType: String, Data, Channel)
+    case sendImage(Data, _ fileName: String, _ mimeType: String, Channel)
     /// Upload a file to a channel.
-    case sendFile(_ fileName: String, _ mimeType: String, Data, Channel)
+    case sendFile(Data, _ fileName: String, _ mimeType: String, Channel)
     // Delete an uploaded image.
     case deleteImage(URL, Channel)
     // Delete an uploaded file.
@@ -251,7 +251,7 @@ extension Endpoint {
         case .markAllRead,
              .markRead,
              .stopWatching:
-            return EmptyData()
+            return EmptyData.empty
             
         case .updateChannel(let channelUpdate):
             return channelUpdate
@@ -327,6 +327,52 @@ extension Endpoint {
              .sendFile:
             return true
         default:
+            return false
+        }
+    }
+    
+    var requiresConnectionId: Bool {
+        switch self {
+        case .users,
+             .updateUsers,
+             .channels,
+             .channel,
+             .stopWatching:
+            return true
+        case .guestToken,
+             .message,
+             .markAllRead,
+             .deleteChannel,
+             .invite,
+             .addMembers,
+             .removeMembers,
+             .replies,
+             .deleteMessage,
+             .deleteReaction,
+             .sendImage,
+             .sendFile,
+             .deleteImage,
+             .deleteFile,
+             .inviteAnswer,
+             .addDevice,
+             .removeDevice,
+             .devices,
+             .search,
+             .updateChannel,
+             .showChannel,
+             .hideChannel,
+             .sendMessage,
+             .sendMessageAction,
+             .markRead,
+             .addReaction,
+             .sendEvent,
+             .muteUser,
+             .unmuteUser,
+             .flagUser,
+             .unflagUser,
+             .flagMessage,
+             .unflagMessage,
+             .ban:
             return false
         }
     }

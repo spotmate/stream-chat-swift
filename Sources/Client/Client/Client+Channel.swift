@@ -69,7 +69,7 @@ public extension Client {
     ///   - channel: a channel.
     ///   - completion: a completion block with `ChannelResponse`.
     @discardableResult
-    func create(channel: Channel, _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
+    func create(channel: Channel, _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
         queryChannel(channel, completion)
     }
     
@@ -78,15 +78,15 @@ public extension Client {
     /// - Parameters:
     ///   - channel: a channel.
     ///   - pagination: a pagination for messages (see `Pagination`).
-    ///   - options: a query options. All by default (see `QueryOptions`), e.g. `.watch`.
+    ///   - options: a query options. `.state` by default (see `QueryOptions`)
     ///   - completion: a completion block with `ChannelResponse`.
     @discardableResult
     func queryChannel(_ channel: Channel,
-                      messagesPagination: Pagination = .none,
-                      membersPagination: Pagination = .none,
-                      watchersPagination: Pagination = .none,
-                      options: QueryOptions = [],
-                      _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
+                      messagesPagination: Pagination = [],
+                      membersPagination: Pagination = [],
+                      watchersPagination: Pagination = [],
+                      options: QueryOptions = .state,
+                      _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
         queryChannel(query: .init(channel: channel,
                                   messagesPagination: messagesPagination,
                                   membersPagination: membersPagination,
@@ -99,14 +99,15 @@ public extension Client {
     ///   - query: a channel query.
     ///   - completion: a completion block with `ChannelResponse`.
     @discardableResult
-    func queryChannel(query: ChannelQuery, _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
-        channelsAtomic.flush()
+    func queryChannel(query: ChannelQuery, _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
+        watchingChannelsAtomic.flush()
+        
         var modifiedCompletion = completion
         
-        if query.options.contains(.watch) || query.options.contains(.presence) {
+        if query.options.contains(.watch), query.options.contains(.state) {
             modifiedCompletion = { [unowned self] result in
                 if let channel = result.value?.channel {
-                    self.channelsAtomic.add(channel, key: channel.cid)
+                    self.refreshWatchingChannels(with: channel)
                 }
                 
                 completion(result)
@@ -124,8 +125,10 @@ public extension Client {
     @discardableResult
     func watch(channel: Channel,
                options: QueryOptions = [],
-               _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
-        queryChannel(channel, options: options.union(.watch), completion)
+               _ completion: @escaping Client.Completion<ChannelResponse> = { _ in }) -> Cancellable {
+        watchingChannelsAtomic.flush()
+        watchingChannelsAtomic.add(channel, key: channel.cid)
+        return queryChannel(channel, options: options.union(.watch), completion)
     }
     
     /// Stop watching the channel for a state changes.
@@ -133,7 +136,7 @@ public extension Client {
     ///   - channel: a channel.
     ///   - completion: an empty completion block.
     @discardableResult
-    func stopWatching(channel: Channel, _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> URLSessionTask {
+    func stopWatching(channel: Channel, _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> Cancellable {
         request(endpoint: .stopWatching(channel), completion)
     }
     
@@ -145,7 +148,7 @@ public extension Client {
     @discardableResult
     func hide(channel: Channel,
               clearHistory: Bool = false,
-              _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> URLSessionTask {
+              _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> Cancellable {
         let completion = doAfter(completion) { [unowned self, weak channel] _ in
             if let channel = channel {
                 self.stopWatching(channel: channel)
@@ -161,7 +164,7 @@ public extension Client {
     ///   - user: the current user.
     ///   - completion: an empty completion block.
     @discardableResult
-    func show(channel: Channel, _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> URLSessionTask {
+    func show(channel: Channel, _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> Cancellable {
         request(endpoint: .showChannel(channel, user), completion)
     }
     
@@ -177,7 +180,7 @@ public extension Client {
                 name: String? = nil,
                 imageURL: URL? = nil,
                 extraData: ChannelExtraDataCodable? = nil,
-                _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
+                _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
         var changed = false
         
         if let name = name, !name.isEmpty {
@@ -197,7 +200,7 @@ public extension Client {
         
         guard changed else {
             completion(.success(.init(channel: channel)))
-            return .empty
+            return Subscription.empty
         }
         
         return request(endpoint: .updateChannel(.init(data: .init(channel))), completion)
@@ -208,7 +211,7 @@ public extension Client {
     ///   - channel: a channel.
     ///   - completion: a completion block with `Channel`.
     @discardableResult
-    func delete(channel: Channel, _ completion: @escaping Client.Completion<Channel>) -> URLSessionTask {
+    func delete(channel: Channel, _ completion: @escaping Client.Completion<Channel>) -> Cancellable {
         request(endpoint: .deleteChannel(channel)) { (result: Result<ChannelDeletedResponse, ClientError>) in
             completion(result.map(to: \.channel))
         }
@@ -222,7 +225,7 @@ public extension Client {
     ///   - channel: a channel.
     ///   - completion: a completion block with `MessageResponse`.
     @discardableResult
-    func send(message: Message, to channel: Channel, _ completion: @escaping Client.Completion<MessageResponse>) -> URLSessionTask {
+    func send(message: Message, to channel: Channel, _ completion: @escaping Client.Completion<MessageResponse>) -> Cancellable {
         let completion = doAfter(completion) { [unowned self] response in
             if response.message.isBan, !self.user.isBanned {
                 self.userAtomic.isBanned = true
@@ -232,7 +235,7 @@ public extension Client {
         
         if channel.id.isEmpty {
             completion(.failure(.emptyChannelId))
-            return .empty
+            return Subscription.empty
         }
         
         // Add mentiond users
@@ -263,7 +266,7 @@ public extension Client {
     func send(action: Attachment.Action,
               for ephemeralMessage: Message,
               to channel: Channel,
-              _ completion: @escaping Client.Completion<MessageResponse>) -> URLSessionTask {
+              _ completion: @escaping Client.Completion<MessageResponse>) -> Cancellable {
         request(endpoint: .sendMessageAction(.init(channel: channel, message: ephemeralMessage, action: action)), completion)
     }
     
@@ -272,9 +275,9 @@ public extension Client {
     ///   - channel: a channel.
     ///   - completion: a completion block with `Event`.
     @discardableResult
-    func markRead(channel: Channel, _ completion: @escaping Client.Completion<Event>) -> URLSessionTask {
+    func markRead(channel: Channel, _ completion: @escaping Client.Completion<Event>) -> Cancellable {
         guard channel.readEventsEnabled else {
-            return .empty
+            return Subscription.empty
         }
         
         logger?.log("🎫 Mark Read")
@@ -290,7 +293,7 @@ public extension Client {
     ///   - channel: a channel.
     ///   - completion: a completion block with `Event`.
     @discardableResult
-    func send(eventType: EventType, to channel: Channel, _ completion: @escaping Client.Completion<Event>) -> URLSessionTask {
+    func send(eventType: EventType, to channel: Channel, _ completion: @escaping Client.Completion<Event>) -> Cancellable {
         request(endpoint: .sendEvent(eventType, channel)) { [unowned self] (result: Result<EventResponse, ClientError>) in
             self.logger?.log("🎫 \(eventType.rawValue)")
             completion(result.map(to: \.event))
@@ -305,7 +308,7 @@ public extension Client {
     ///   - channel: a channel.
     ///   - completion: a completion block with `ChannelResponse`.
     @discardableResult
-    func add(user: User, to channel: Channel, _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
+    func add(user: User, to channel: Channel, _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
         add(members: Set([user.asMember]), to: channel, completion)
     }
     
@@ -317,7 +320,7 @@ public extension Client {
     @discardableResult
     func add(users: Set<User>,
              to channel: Channel,
-             _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
+             _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
         add(members: Set(users.map({ $0.asMember })), to: channel, completion)
     }
     
@@ -327,7 +330,7 @@ public extension Client {
     ///   - channel: a channel.
     ///   - completion: a completion block with `ChannelResponse`.
     @discardableResult
-    func add(member: Member, to channel: Channel, _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
+    func add(member: Member, to channel: Channel, _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
         add(members: Set([member]), to: channel, completion)
     }
     
@@ -339,7 +342,7 @@ public extension Client {
     @discardableResult
     func add(members: Set<Member>,
              to channel: Channel,
-             _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
+             _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
         request(endpoint: .addMembers(members, channel), completion)
     }
     
@@ -351,7 +354,7 @@ public extension Client {
     @discardableResult
     func remove(user: User,
                 from channel: Channel,
-                _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
+                _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
         remove(members: Set([user.asMember]), from: channel, completion)
     }
     
@@ -363,7 +366,7 @@ public extension Client {
     @discardableResult
     func remove(users: Set<User>,
                 from channel: Channel,
-                _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
+                _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
         remove(members: Set(users.map({ $0.asMember })), from: channel, completion)
     }
     
@@ -375,7 +378,7 @@ public extension Client {
     @discardableResult
     func remove(member: Member,
                 from channel: Channel,
-                _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
+                _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
         remove(members: Set([member]), from: channel, completion)
     }
     
@@ -387,7 +390,7 @@ public extension Client {
     @discardableResult
     func remove(members: Set<Member>,
                 from channel: Channel,
-                _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
+                _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
         request(endpoint: .removeMembers(members, channel), completion)
     }
     
@@ -404,7 +407,7 @@ public extension Client {
              in channel: Channel,
              timeoutInMinutes: Int? = nil,
              reason: String? = nil,
-             _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> URLSessionTask {
+             _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> Cancellable {
         let timeoutInMinutes = timeoutInMinutes ?? channel.banEnabling.timeoutInMinutes
         let reason = reason ?? channel.banEnabling.reason
         let userBan = UserBan(user: user, channel: channel, timeoutInMinutes: timeoutInMinutes, reason: reason)
@@ -426,7 +429,7 @@ public extension Client {
     ///   - channel: a channel.
     ///   - completion: a completion block with `ChannelResponse`.
     @discardableResult
-    func invite(member: Member, to channel: Channel, _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
+    func invite(member: Member, to channel: Channel, _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
         invite(members: [member], to: channel, completion)
     }
     
@@ -438,7 +441,7 @@ public extension Client {
     @discardableResult
     func invite(members: Set<Member>,
                 to channel: Channel,
-                _ completion: @escaping Client.Completion<ChannelResponse>) -> URLSessionTask {
+                _ completion: @escaping Client.Completion<ChannelResponse>) -> Cancellable {
         request(endpoint: .invite(members, channel), completion)
     }
     
@@ -451,7 +454,7 @@ public extension Client {
     @discardableResult
     func acceptInvite(for channel: Channel,
                       with message: Message? = nil,
-                      _ completion: @escaping Client.Completion<ChannelInviteResponse>) -> URLSessionTask {
+                      _ completion: @escaping Client.Completion<ChannelInviteResponse>) -> Cancellable {
         sendInviteAnswer(accept: true, reject: nil, message: message, channel: channel, completion)
     }
     
@@ -463,7 +466,7 @@ public extension Client {
     @discardableResult
     func rejectInvite(for channel: Channel,
                       with message: Message? = nil,
-                      _ completion: @escaping Client.Completion<ChannelInviteResponse>) -> URLSessionTask {
+                      _ completion: @escaping Client.Completion<ChannelInviteResponse>) -> Cancellable {
         sendInviteAnswer(accept: nil, reject: true, message: message, channel: channel, completion)
     }
     
@@ -471,53 +474,53 @@ public extension Client {
                                   reject: Bool?,
                                   message: Message?,
                                   channel: Channel,
-                                  _ completion: @escaping Client.Completion<ChannelInviteResponse>) -> URLSessionTask {
+                                  _ completion: @escaping Client.Completion<ChannelInviteResponse>) -> Cancellable {
         let answer = ChannelInviteAnswer(channel: channel, accept: accept, reject: reject, message: message)
         return request(endpoint: .inviteAnswer(answer), completion)
     }
     
-    // MARK: - File Requests
+    // MARK: - Uploading
     
     /// Upload an image to the channel.
     /// - Parameters:
+    ///   - data: an image data.
     ///   - fileName: a file name.
     ///   - mimeType: a file mime type.
-    ///   - imageData: an image data.
     ///   - channel: a channel.
     ///   - progress: a progress block with `Client.Progress`.
     ///   - completion: a completion block with `Client.Completion<URL>`.
     @discardableResult
-    func sendImage(fileName: String,
+    func sendImage(data: Data,
+                   fileName: String,
                    mimeType: String,
-                   imageData: Data,
-                   to channel: Channel,
-                   _ progress: @escaping Client.Progress,
-                   _ completion: @escaping Client.Completion<URL>) -> URLSessionTask {
-        sendFile(endpoint: .sendImage(fileName, mimeType, imageData, channel), progress, completion)
+                   channel: Channel,
+                   progress: @escaping Client.Progress,
+                   completion: @escaping Client.Completion<URL>) -> Cancellable {
+        sendFile(endpoint: .sendImage(data, fileName, mimeType, channel), progress: progress, completion: completion)
     }
     
     /// Upload a file to the channel.
     /// - Parameters:
+    ///   - data: a file data.
     ///   - fileName: a file name.
     ///   - mimeType: a file mime type.
-    ///   - fileData: a file data.
     ///   - channel: a channel.
     ///   - progress: a progress block with `Client.Progress`.
     ///   - completion: a completion block with `Client.Completion<URL>`.
     @discardableResult
-    func sendFile(fileName: String,
+    func sendFile(data: Data,
+                  fileName: String,
                   mimeType: String,
-                  fileData: Data,
-                  to channel: Channel,
-                  _ progress: @escaping Client.Progress,
-                  _ completion: @escaping Client.Completion<URL>) -> URLSessionTask {
-        sendFile(endpoint: .sendFile(fileName, mimeType, fileData, channel), progress, completion)
+                  channel: Channel,
+                  progress: @escaping Client.Progress,
+                  completion: @escaping Client.Completion<URL>) -> Cancellable {
+        sendFile(endpoint: .sendFile(data, fileName, mimeType, channel), progress: progress, completion: completion)
     }
     
     private func sendFile(endpoint: Endpoint,
-                          _ progress: @escaping Client.Progress,
-                          _ completion: @escaping Client.Completion<URL>) -> URLSessionTask {
-        request(endpoint: endpoint, progress) { (result: Result<FileUploadResponse, ClientError>) in
+                          progress: @escaping Client.Progress,
+                          completion: @escaping Client.Completion<URL>) -> Cancellable {
+        request(endpoint: endpoint, progress: progress) { (result: Result<FileUploadResponse, ClientError>) in
             completion(result.map(to: \.file))
         }
     }
@@ -528,9 +531,7 @@ public extension Client {
     ///   - channel: a channel.
     ///   - completion: an empty completion block.
     @discardableResult
-    func deleteImage(url: URL,
-                     from channel: Channel,
-                     _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> URLSessionTask {
+    func deleteImage(url: URL, channel: Channel, _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> Cancellable {
         request(endpoint: .deleteImage(url, channel), completion)
     }
     
@@ -540,9 +541,7 @@ public extension Client {
     ///   - channel: a channel.
     ///   - completion: an empty completion block.
     @discardableResult
-    func deleteFile(url: URL,
-                    from channel: Channel,
-                    _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> URLSessionTask {
+    func deleteFile(url: URL, channel: Channel, _ completion: @escaping Client.Completion<EmptyData> = { _ in }) -> Cancellable {
         request(endpoint: .deleteFile(url, channel), completion)
     }
 } // swiftlint:disable:this file_length
