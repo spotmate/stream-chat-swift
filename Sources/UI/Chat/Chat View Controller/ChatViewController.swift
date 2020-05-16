@@ -76,7 +76,9 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
     private(set) lazy var composerEditingContainerView = createComposerEditingContainerView()
     private(set) lazy var composerCommandsContainerView = createComposerCommandsContainerView()
     private(set) lazy var composerAddFileContainerView = createComposerAddFileContainerView(title: "ファイルを追加")
-    
+
+    public var tappedAvatarView: ((String) -> Void)?
+
     /// A table view of messages.
     public private(set) lazy var tableView: TableView = {
         let tableView = TableView(frame: .zero, style: .plain)
