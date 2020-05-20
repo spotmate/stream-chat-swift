@@ -75,20 +75,21 @@ final class ReadUsersView: UIView {
         
         isHidden = false
         
-        if let user = readUsers.last {
-            rightAvatarView.isHidden = false
-            rightAvatarView.update(with: user.avatarURL, name: user.name)
-        }
+//        if let user = readUsers.last {
+//            rightAvatarView.isHidden = false
+//            rightAvatarView.update(with: user.avatarURL, name: user.name)
+//        }
+//
+//        if readUsers.count > 1, readUsers.count < 100 {
+//            let user = readUsers[readUsers.count - 2]
+//            rightAvatarView.isHidden = false
+//            leftAvatarView.update(with: user.avatarURL, name: user.name)
+//        }
         
-        if readUsers.count > 1, readUsers.count < 100 {
-            let user = readUsers[readUsers.count - 2]
-            rightAvatarView.isHidden = false
-            leftAvatarView.update(with: user.avatarURL, name: user.name)
-        }
-        
-        if readUsers.count > 2 {
-            countLabel.text = String(readUsers.count)
-        }
+//        if readUsers.count > 2 {
+//            countLabel.text = String(readUsers.count)
+//        }
+        countLabel.text = "既読"
     }
     
     private func updateAvatarsBorderColors() {

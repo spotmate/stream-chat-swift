@@ -125,69 +125,72 @@ extension Notifications {
     ///   - message: a message.
     ///   - channel: a channel.
     public func show(newMessage message: Message, in channel: Channel) {
-        notificationCenter.getNotificationSettings { [unowned self] settings in
-            guard settings.authorizationStatus == .authorized else { return }
-            DispatchQueue.main.async { self.showLocalNotification(for: message, in: channel) }
-        }
+        return
+//        notificationCenter.getNotificationSettings { [unowned self] settings in
+//            guard settings.authorizationStatus == .authorized else { return }
+//            DispatchQueue.main.async { self.showLocalNotification(for: message, in: channel) }
+//        }
     }
     
     private func showLocalNotification(for message: Message, in channel: Channel) {
-        let content = createLocalNotificationContent(newMessage: message, in: channel)
-        let request = UNNotificationRequest(identifier: message.id, content: content, trigger: nil)
-        
-        notificationCenter.add(request) { [unowned self] error in
-            if let error = error {
-                self.logger?.log(error, message: "When adding a local notification")
-            } else {
-                self.logger?.log("Added a local notification for " +
-                    "channel: \(channel.cid) message id: \(message.id) text: \(message.textOrArgs)")
-            }
-        }
+        return
+//        let content = createLocalNotificationContent(newMessage: message, in: channel)
+//        let request = UNNotificationRequest(identifier: message.id, content: content, trigger: nil)
+//
+//        notificationCenter.add(request) { [unowned self] error in
+//            if let error = error {
+//                self.logger?.log(error, message: "When adding a local notification")
+//            } else {
+//                self.logger?.log("Added a local notification for " +
+//                    "channel: \(channel.cid) message id: \(message.id) text: \(message.textOrArgs)")
+//            }
+//        }
     }
     
     private func createLocalNotificationContent(newMessage message: Message, in channel: Channel) -> UNNotificationContent {
-        if let localNotificationContent = localNotificationContent {
-            return localNotificationContent(message, channel)
-        }
-        
-        var body = message.textOrArgs
-        
-        if body.isEmpty, let attachment = message.attachments.first {
-            body = attachment.title
-            
-            if body.isEmpty, let text = attachment.text {
-                body = text
-            }
-            
-            if body.isEmpty, let file = attachment.file {
-                body = "A \(file.type.rawValue) file \(file.sizeString)"
-            }
-        }
-        
-        // TODO: Add attchament image or video. The url should refer to a file.
-        //  1. Download image.
-        //  2. Save to NSTemporaryDirectory() + "notifications" + message id
-        //  3. Create attachment
-        //  4. When a notification opened, remove all tmp images from NSTemporaryDirectory() + "notifications"
-        //    if let attachment = message.attachments.first,
-        //        attachment.isImage,
-        //        let url = attachment.imageURL,
-        //        !url.absoluteString.contains(".gif"),
-        //        let notificationAttachment = try? UNNotificationAttachment(identifier: attachment.title, url: url) {
-        //         content.attachments = [notificationAttachment]
-        //    }
-        
-        let content = UNMutableNotificationContent()
-        content.title = "\(message.user.name) @ \(channel.name ?? "")"
-        content.body = body
-        content.sound = UNNotificationSound.default
-        content.badge = (UIApplication.shared.applicationIconBadgeNumber + 1) as NSNumber
-        
-        content.userInfo = [NotificationUserInfoKeys.channelId.rawValue: channel.id,
-                            NotificationUserInfoKeys.channelType.rawValue: channel.type.rawValue,
-                            NotificationUserInfoKeys.messageId.rawValue: message.id]
-        
-        return content
+        return UNMutableNotificationContent()
+//        if let localNotificationContent = localNotificationContent {
+//            return localNotificationContent(message, channel)
+//        }
+//
+//        var body = message.textOrArgs
+//
+//        if body.isEmpty, let attachment = message.attachments.first {
+//            body = attachment.title
+//
+//            if body.isEmpty, let text = attachment.text {
+//                body = text
+//            }
+//
+//            if body.isEmpty, let file = attachment.file {
+//                body = "A \(file.type.rawValue) file \(file.sizeString)"
+//            }
+//        }
+//
+//        // TODO: Add attchament image or video. The url should refer to a file.
+//        //  1. Download image.
+//        //  2. Save to NSTemporaryDirectory() + "notifications" + message id
+//        //  3. Create attachment
+//        //  4. When a notification opened, remove all tmp images from NSTemporaryDirectory() + "notifications"
+//        //    if let attachment = message.attachments.first,
+//        //        attachment.isImage,
+//        //        let url = attachment.imageURL,
+//        //        !url.absoluteString.contains(".gif"),
+//        //        let notificationAttachment = try? UNNotificationAttachment(identifier: attachment.title, url: url) {
+//        //         content.attachments = [notificationAttachment]
+//        //    }
+//
+//        let content = UNMutableNotificationContent()
+//        content.title = "\(message.user.name) @ \(channel.name ?? "")"
+//        content.body = body
+//        content.sound = UNNotificationSound.default
+//        content.badge = (UIApplication.shared.applicationIconBadgeNumber + 1) as NSNumber
+//
+//        content.userInfo = [NotificationUserInfoKeys.channelId.rawValue: channel.id,
+//                            NotificationUserInfoKeys.channelType.rawValue: channel.type.rawValue,
+//                            NotificationUserInfoKeys.messageId.rawValue: message.id]
+//
+//        return content
     }
 }
 
