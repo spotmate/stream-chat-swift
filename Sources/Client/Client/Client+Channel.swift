@@ -239,6 +239,7 @@ public extension Client {
             if response.message.isBan, !self.user.isBanned {
                 self.userAtomic.isBanned = true
             }
+            self.sendCompletion?(response)
         }
         
         if channel.id.isEmpty {

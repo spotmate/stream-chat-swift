@@ -11,19 +11,19 @@ import Foundation
 extension Date {
     
     /// Checks if the date if today.
-    public var isToday: Bool {
+    var isToday: Bool {
         return Calendar.current.isDateInToday(self)
     }
     
     /// Checks if the date if yesterday.
-    public var isYesterday: Bool {
+    var isYesterday: Bool {
         return Calendar.current.isDateInYesterday(self)
     }
 }
 
 extension Date {
     /// A yesterday title for a status separartor.
-    public static var yesterday = "Yesterday"
+    public static var yesterday = "昨日"
     /// A words separator for day and time.
     public static var wordsSeparator = ", "
     

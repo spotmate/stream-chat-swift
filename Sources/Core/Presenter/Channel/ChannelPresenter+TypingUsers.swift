@@ -20,11 +20,11 @@ extension ChannelPresenter {
         }
         
         if typingUsers.count == 1, let typingUser = typingUsers.first {
-            return "\(typingUser.user.name) is typing..."
+            return "\(typingUser.user.name) が入力しています..."
         } else if typingUsers.count == 2 {
-            return "\(typingUsers[0].user.name) and \(typingUsers[1].user.name) are typing..."
+            return "\(typingUsers[0].user.name) と \(typingUsers[1].user.name) が入力しています..."
         } else if let typingUser = typingUsers.first {
-            return "\(typingUser.user.name) and \(String(typingUsers.count - 1)) others are typing..."
+            return "\(typingUser.user.name) と \(String(typingUsers.count - 1)) その他が入力しています..."
         }
         
         return nil
