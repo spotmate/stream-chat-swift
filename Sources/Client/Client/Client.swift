@@ -71,6 +71,8 @@ public final class Client: Uploader {
         configForSharedClient = config
     }
     
+    public var sendCompletion: ((MessageResponse) -> Void)?
+    
     /// Stream API key.
     /// - Note: If you will change API key the Client will be disconnected and the current user will be logged out.
     ///         You have to setup another user after that.
