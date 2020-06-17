@@ -95,7 +95,7 @@ extension ChannelPresenter {
             if showStatuses, !yesterdayStatusAdded, message.created.isYesterday {
                 yesterdayStatusAdded = true
                 items.insert(.status(PresenterItem.statusYesterdayTitle,
-                                     "at \(DateFormatter.time.string(from: message.created))",
+                                     "\(DateFormatter.time.string(from: message.created))",
                     false), at: index)
                 index += 1
             }
@@ -103,7 +103,7 @@ extension ChannelPresenter {
             if showStatuses, !todayStatusAdded, message.created.isToday {
                 todayStatusAdded = true
                 items.insert(.status(PresenterItem.statusTodayTitle,
-                                     "at \(DateFormatter.time.string(from: message.created))",
+                                     "\(DateFormatter.time.string(from: message.created))",
                     false), at: index)
                 index += 1
             }

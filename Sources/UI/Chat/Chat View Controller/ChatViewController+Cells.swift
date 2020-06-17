@@ -191,6 +191,14 @@ extension ChatViewController {
                 }
             })
             .disposed(by: cell.disposeBag)
+
+        if !message.isOwn {
+            cell.avatarView.rx.tapGesture()
+                .skip(1)
+                .subscribe(onNext: { [weak self] _ in
+                    self?.tappedAvatarView?(message.user.id)
+                }).disposed(by: cell.disposeBag)
+        }
     }
     
     func handleMessageCellTap(from cell: MessageTableViewCell,
