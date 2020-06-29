@@ -242,7 +242,7 @@ extension ChatViewController {
 
 extension ChatViewController {
     func createComposerEditingContainerView() -> ComposerHelperContainerView {
-        let container = createComposerHelperContainerView(title: "Edit message")
+        let container = createComposerHelperContainerView(title: "メッセージを編集")
         
         container.closeButton.rx.tap
             .subscribe(onNext: { [weak self] _ in
@@ -375,7 +375,7 @@ extension ChatViewController {
                     UIImagePickerController.isSourceTypeAvailable(.savedPhotosAlbum) {
                     addButtonToAddFileView(container,
                                            icon: UIImage.Icons.images,
-                                           title: "Upload a photo or video",
+                                           title: "写真または動画をアップロード",
                                            sourceType: .photo(.savedPhotosAlbum)) { [weak self] in
                                             self?.showImagePicker(composerAddFileViewSourceType: $0)
                     }
@@ -389,7 +389,7 @@ extension ChatViewController {
                     UIImagePickerController.isSourceTypeAvailable(.camera) {
                     addButtonToAddFileView(container,
                                            icon: UIImage.Icons.camera,
-                                           title: "Upload from camera",
+                                           title: "写真を撮ってアップロード",
                                            sourceType: .photo(.camera)) { [weak self] in
                                             self?.showImagePicker(composerAddFileViewSourceType: $0)
                     }
@@ -397,7 +397,7 @@ extension ChatViewController {
             case .file:
                 addButtonToAddFileView(container,
                                        icon: UIImage.Icons.file,
-                                       title: "Upload a file",
+                                       title: "ファイルをアップロード",
                                        sourceType: .file) { [weak self] _ in
                                         self?.showDocumentPicker()
                 }

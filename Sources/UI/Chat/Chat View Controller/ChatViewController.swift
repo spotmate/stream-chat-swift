@@ -75,8 +75,10 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
     
     private(set) lazy var composerEditingContainerView = createComposerEditingContainerView()
     private(set) lazy var composerCommandsContainerView = createComposerCommandsContainerView()
-    private(set) lazy var composerAddFileContainerView = createComposerAddFileContainerView(title: "Add a file")
-    
+    private(set) lazy var composerAddFileContainerView = createComposerAddFileContainerView(title: "ファイルを追加")
+
+    public var tappedAvatarView: ((String) -> Void)?
+
     /// A table view of messages.
     public private(set) lazy var tableView: TableView = {
         let tableView = TableView(frame: .zero, style: .plain)
@@ -352,13 +354,13 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
             presenter?.rx.markReadIfPossible().subscribe().disposed(by: disposeBag)
         }
     }
-}
+//}
+//
+//// MARK: - Title
+//
+//extension ChatViewController {
 
-// MARK: - Title
-
-extension ChatViewController {
-    
-    private func updateTitle() {
+    open func updateTitle() {
         guard title == nil, navigationItem.rightBarButtonItem == nil, let presenter = presenter else {
             return
         }
@@ -375,7 +377,7 @@ extension ChatViewController {
         channelAvatar.update(with: presenter.channel.imageURL, name: title)
     }
     
-    private func updateTitleReplyCount() {
+    open func updateTitleReplyCount() {
         guard title == "Thread", let parentMessage = presenter?.parentMessage else {
             return
         }
