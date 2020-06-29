@@ -207,8 +207,12 @@ extension ChatViewController {
         if let messageTextEnrichment = cell.messageTextEnrichment, !messageTextEnrichment.detectedURLs.isEmpty {
             for detectedURL in messageTextEnrichment.detectedURLs {
                 if tapGesture.didTapAttributedTextInLabel(label: cell.messageLabel, inRange: detectedURL.range) {
-                    showWebView(url: detectedURL.url, title: nil)
-                    return
+                  if detectedURL.url.absoluteURL.absoluteString.hasPrefix("baitry") {
+                      UIApplication.shared.open(detectedURL.url)
+                  } else {
+                      showWebView(url: detectedURL.url, title: nil)
+                  }
+                  return
                 }
             }
         }
