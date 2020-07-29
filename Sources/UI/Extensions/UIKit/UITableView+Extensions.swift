@@ -48,7 +48,7 @@ extension UITableView {
 
 extension UITableView {
     /// A loading cell title.
-    public static var loadingTitle = "Loading..."
+    public static var loadingTitle = "読み込み中..."
     
     /// A default loading table view cell.
     ///
