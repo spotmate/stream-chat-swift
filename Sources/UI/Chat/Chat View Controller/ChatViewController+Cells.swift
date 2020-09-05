@@ -197,6 +197,14 @@ extension ChatViewController {
                 }
             })
             .disposed(by: cell.disposeBag)
+
+        if !message.isOwn {
+            cell.avatarView.rx.tapGesture()
+                .skip(1)
+                .subscribe(onNext: { [weak self] _ in
+                    self?.tappedAvatarView?(message.user.id)
+                }).disposed(by: cell.disposeBag)
+        }
     }
     
     func tapOnMessageCell(from cell: MessageTableViewCell,
@@ -205,8 +213,12 @@ extension ChatViewController {
         if let messageTextEnrichment = cell.messageTextEnrichment, !messageTextEnrichment.detectedURLs.isEmpty {
             for detectedURL in messageTextEnrichment.detectedURLs {
                 if tapGesture.didTapAttributedTextInLabel(label: cell.messageLabel, inRange: detectedURL.range) {
-                    showWebView(url: detectedURL.url, title: nil)
-                    return
+                  if detectedURL.url.absoluteURL.absoluteString.hasPrefix("baitry") {
+                      UIApplication.shared.open(detectedURL.url)
+                  } else {
+                      showWebView(url: detectedURL.url, title: nil)
+                  }
+                  return
                 }
             }
         }
